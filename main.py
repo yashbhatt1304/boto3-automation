@@ -27,6 +27,7 @@ putDataInS3()
 
 amiId="ami-062cf18d655c0b1e8"
 keyPair="Yash_HV"
+securityGroup="sg-04b6dc832e6caa00c"
 script='''#!/bin/bash
 sudo apt update
 sudo apt install -y nginx
@@ -53,11 +54,97 @@ def lauchEC2Instance():
         MaxCount=1,
         MinCount=1,
         SecurityGroupIds=[
-            'sg-04b6dc832e6caa00c',
+            securityGroup,
         ],
         UserData=script
     )   
     return response
 
-instanceId = lauchEC2Instance()['Instances'][0]['InstanceId']
+EC2details = lauchEC2Instance()
+instanceId = EC2details['Instances'][0]['InstanceId']
+VpcId = EC2details['Instances'][0]['VpcId']
+SubnetId = EC2details['Instances'][0]['SubnetId']
+# print(EC2details)
 print(instanceId)
+print(VpcId)
+
+
+
+############ Creating Target Group ###########
+def createTargetGroup():
+    lb=boto3.client('elbv2')
+    response = lb.create_target_group(
+        Name='Yash-tg',
+        Protocol='HTTP',
+        Port=80,
+        VpcId=VpcId,
+        HealthCheckProtocol='HTTP',
+        HealthCheckPort='80',
+        HealthCheckEnabled=True,
+        HealthCheckPath='/',
+        Matcher={
+            'HttpCode': '200'
+        },
+        TargetType='instance',
+    )
+    return response
+tg_arn = createTargetGroup()['TargetGroups'][0]['TargetGroupArn']
+print(tg_arn)
+
+
+
+############ Getting available subnets for VPC ############
+def getSubnet():
+    ec2=boto3.client('ec2')
+    response = ec2.describe_subnets(
+        Filters=[
+            {
+                'Name': 'vpc-id',
+                'Values': ['vpc-0f22c13329dc40837']
+            }
+        ]
+    )
+    return response
+subnets=[i['SubnetId'] for i in getSubnet()['Subnets']]
+print(subnets)
+
+
+
+############ Creating Application Load Balancer ############
+def createLB():
+    lb=boto3.client('elbv2')
+    response = lb.create_load_balancer(
+        Name='yash-LB',
+        SecurityGroups=[securityGroup],
+        Scheme='internet-facing',
+        Subnets=subnets,
+        Type='application'
+    )
+
+    return response
+LB_arn = createLB()['LoadBalancers'][0]['LoadBalancerArn']
+print(LB_arn)
+
+
+
+########### Registering Target Group and Adding Listner ###########
+def registerTGandListner():
+    lb=boto3.client('elbv2')
+    lb.register_targets(
+        TargetGroupArn=tg_arn,
+        Targets=[{'Id': instanceId}]
+    )
+    response = lb.create_listener(
+        LoadBalancerArn=LB_arn,
+        Protocol='HTTP',
+        Port=80,
+        DefaultActions=[
+            {
+                'Type': 'forward',
+                'TargetGroupArn': tg_arn
+            }
+        ]
+    )
+
+listner =registerTGandListner()['Listeners'][0]['ListenerArn']
+print(listner)
