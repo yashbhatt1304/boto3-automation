@@ -334,7 +334,46 @@ def snsHealthTopic():
         ]
     )
     return snsHealthArn
-snsHealthArn=snsHealthTopic()
-print("SNS Health Topic ARN: "+snsHealthArn)
+# snsHealthArn=snsHealthTopic()
+# print("SNS Health Topic ARN: "+snsHealthArn)
+
+
+
+########## Configuring scaling alerts ###########
+def snsScalingTopic():
+    sns = boto3.client('sns')
+    cw = boto3.client('cloudwatch')
+    response = sns.create_topic(
+        Name='ScalingEventsTopic',
+        Attributes={
+            'DisplayName': 'ScalingEventsTopic'
+        }
+    )
+    snsScalingArn = response['TopicArn']
+
+    res=cw.put_metric_alarm(
+        AlarmName='ScalingAlarm',
+        ComparisonOperator='LessThanThreshold',
+        EvaluationPeriods=2,
+        MetricName='GroupInServiceInstances',
+        Namespace='AWS/AutoScaling',
+        Period=60,
+        Statistic='Average',
+        Threshold=1,
+        ActionsEnabled=True,
+        AlarmActions=[snsScalingArn],
+        AlarmDescription='Alarm for scaling events',
+        Dimensions=[
+            {
+                'Name': 'AutoScalingGroupName',
+                'Value': ASG_name
+            },
+        ]
+    )
+    print("Scaling Alert: "+str(res))
+    return snsScalingArn
+snsScalingArn=snsScalingTopic()
+print("SNS Scaling Topic ARN: "+snsScalingArn)
+
 
 
