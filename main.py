@@ -314,28 +314,34 @@ def snsHealthTopic():
     )
     snsHealthArn = response['TopicArn']
 
-    res=cw.put_metric_alarm(
-        AlarmName='HealthAlarm',
-        ComparisonOperator='LessThanThreshold',
-        EvaluationPeriods=2,
-        MetricName='HealthyHostCount',
-        Namespace='AWS/ApplicationELB',
-        Period=60,
-        Statistic='Average',
-        Threshold=1,
-        ActionsEnabled=True,
-        AlarmActions=[snsHealthArn],
-        AlarmDescription='Alarm when healthy hosts count is less than 1',
-        Dimensions=[
-            {
-                'Name': 'AutoScalingGroupName',
-                'Value': ASG_name
-            },
-        ]
+    # res=cw.put_metric_alarm(
+    #     AlarmName='HealthAlarm',
+    #     ComparisonOperator='LessThanThreshold',
+    #     EvaluationPeriods=2,
+    #     MetricName='HealthyHostCount',
+    #     Namespace='AWS/ApplicationELB',
+    #     Period=60,
+    #     Statistic='Average',
+    #     Threshold=1,
+    #     ActionsEnabled=True,
+    #     AlarmActions=[snsHealthArn],
+    #     AlarmDescription='Alarm when healthy hosts count is less than 1',
+    #     Dimensions=[
+    #         {
+    #             'Name': 'AutoScalingGroupName',
+    #             'Value': ASG_name
+    #         },
+    #     ]
+    # )
+
+    response = sns.subscribe(
+        TopicArn=snsHealthArn,
+        Protocol='email',
+        Endpoint='yashbhatt1304@gmail.com'
     )
     return snsHealthArn
-# snsHealthArn=snsHealthTopic()
-# print("SNS Health Topic ARN: "+snsHealthArn)
+snsHealthArn=snsHealthTopic()
+print("SNS Health Topic ARN: "+snsHealthArn)
 
 
 
@@ -370,10 +376,15 @@ def snsScalingTopic():
             },
         ]
     )
-    print("Scaling Alert: "+str(res))
+
+    response = sns.subscribe(
+        TopicArn=snsScalingArn,
+        Protocol='email',
+        Endpoint='yashbhatt1304@gmail.com'
+    )
     return snsScalingArn
-snsScalingArn=snsScalingTopic()
-print("SNS Scaling Topic ARN: "+snsScalingArn)
+# snsScalingArn=snsScalingTopic()
+# print("SNS Scaling Topic ARN: "+snsScalingArn)
 
 
 
@@ -387,7 +398,7 @@ def snsTrafficTopic():
             'DisplayName': 'HighTrafficTopic'
         }
     )
-    snsSTrafficArn = response['TopicArn']
+    snsTrafficArn = response['TopicArn']
 
     res=cw.put_metric_alarm(
         AlarmName='TrafficAlarm',
@@ -399,7 +410,7 @@ def snsTrafficTopic():
         Statistic='Sum',
         Threshold=100,
         ActionsEnabled=True,
-        AlarmActions=[snsSTrafficArn],
+        AlarmActions=[snsTrafficArn],
         AlarmDescription='Alarm for Traffic events',
         Dimensions=[
             {
@@ -408,7 +419,12 @@ def snsTrafficTopic():
             },
         ]
     )
-    print("Traffic Alert: "+str(res))
-    return snsSTrafficArn
-snsSTrafficArn=snsTrafficTopic()
-print("SNS Scaling Topic ARN: "+snsSTrafficArn)
+
+    response = sns.subscribe(
+        TopicArn=snsTrafficArn,
+        Protocol='email',
+        Endpoint='yashbhatt1304@gmail.com'
+    )
+    return snsTrafficArn
+# snsTrafficArn=snsTrafficTopic()
+# print("SNS Scaling Topic ARN: "+snsTrafficArn)
