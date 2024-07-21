@@ -48,6 +48,9 @@ def lauchEC2Instance():
                 },
             },
         ],
+        # IamInstanceProfile={
+        #     'Arn': 'arn:aws:iam::975050024946:policy/Yash-EC2-fullAccess'
+        # },
         ImageId=amiId,
         InstanceType='t2.micro',
         KeyName=keyPair,
@@ -65,8 +68,8 @@ instanceId = EC2details['Instances'][0]['InstanceId']
 VpcId = EC2details['Instances'][0]['VpcId']
 SubnetId = EC2details['Instances'][0]['SubnetId']
 # print(EC2details)
-print(instanceId)
-print(VpcId)
+print("Instance Id: "+instanceId)
+print("VPC Id: "+VpcId)
 
 
 
@@ -89,7 +92,7 @@ def createTargetGroup():
     )
     return response
 tg_arn = createTargetGroup()['TargetGroups'][0]['TargetGroupArn']
-print(tg_arn)
+print("Target ARN: "+tg_arn)
 
 
 
@@ -106,7 +109,7 @@ def getSubnet():
     )
     return response
 subnets=[i['SubnetId'] for i in getSubnet()['Subnets']]
-print(subnets)
+print("Subnets: "+str(subnets))
 
 
 
@@ -123,7 +126,7 @@ def createLB():
 
     return response
 LB_arn = createLB()['LoadBalancers'][0]['LoadBalancerArn']
-print(LB_arn)
+print("Load Balancer ARN: "+LB_arn)
 
 
 
@@ -145,6 +148,57 @@ def registerTGandListner():
             }
         ]
     )
+    return response
 
 listner =registerTGandListner()['Listeners'][0]['ListenerArn']
-print(listner)
+print("Adding Listner to Target Group: "+listner)
+
+
+
+########## Geti=ting details of EC2 running Instance ##########
+def getAMI():
+    ec2=boto3.client('ec2')
+    response = ec2.describe_instances(
+        InstanceIds=[
+            'i-04e63a58248406f03',
+        ],
+    )
+    return response
+res = getAMI()
+# print("Describing Instance:\n"+str(res))
+amiId = res['Reservations'][0]['Instances'][0]['ImageId']
+vpcIdentifier = res['Reservations'][0]['Instances'][0]['VpcId']
+print("AMI Id: "+amiId)
+print("VPC Identifier: "+vpcIdentifier)
+
+
+
+########### Creating configuration template for ASG ###########
+def createLaunchConfigASG():
+    asg = boto3.client('autoscaling')
+    response = asg.create_launch_configuration(
+        ImageId=amiId,
+        KeyName='Yash_HV',
+        SecurityGroups=['sg-04b6dc832e6caa00c',],
+        InstanceType='t2.micro',
+        LaunchConfigurationName='yash-launch-config',
+    )
+    print("Launch Configuration:\n"+str(response))
+# createLaunchConfigASG()
+
+
+
+########### Creating ASG ###########
+def createAsg():
+    asg = boto3.client('autoscaling')
+    response = asg.create_auto_scaling_group(
+        AutoScalingGroupName='yash-auto-scaling-group',
+        DefaultInstanceWarmup=120,
+        LaunchConfigurationName='yash-launch-config',
+        MaxSize=4,
+        MinSize=1,
+        VPCZoneIdentifier=','.join(i for i in subnets),
+    )
+    print("Creating ASG:\n"+str(response))
+
+createAsg()
