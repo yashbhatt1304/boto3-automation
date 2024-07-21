@@ -377,3 +377,38 @@ print("SNS Scaling Topic ARN: "+snsScalingArn)
 
 
 
+########## Configuring Traffic alerts ###########
+def snsTrafficTopic():
+    sns = boto3.client('sns')
+    cw = boto3.client('cloudwatch')
+    response = sns.create_topic(
+        Name='HighTrafficTopic',
+        Attributes={
+            'DisplayName': 'HighTrafficTopic'
+        }
+    )
+    snsSTrafficArn = response['TopicArn']
+
+    res=cw.put_metric_alarm(
+        AlarmName='TrafficAlarm',
+        ComparisonOperator='GreaterThanThreshold',
+        EvaluationPeriods=2,
+        MetricName='RequestCount',
+        Namespace='AWS/ApplicationELB',
+        Period=60,
+        Statistic='Sum',
+        Threshold=100,
+        ActionsEnabled=True,
+        AlarmActions=[snsSTrafficArn],
+        AlarmDescription='Alarm for Traffic events',
+        Dimensions=[
+            {
+                'Name': 'AutoScalingGroupName',
+                'Value': ASG_name
+            },
+        ]
+    )
+    print("Traffic Alert: "+str(res))
+    return snsSTrafficArn
+snsSTrafficArn=snsTrafficTopic()
+print("SNS Scaling Topic ARN: "+snsSTrafficArn)
