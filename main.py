@@ -208,7 +208,7 @@ def createAsg():
         VPCZoneIdentifier=','.join(i for i in subnets),
     )
     print("Creating ASG:\n"+str(response))
-# createAsg()
+createAsg()
 
 
 
@@ -244,3 +244,58 @@ def createScalingInPolicy():
 ScaleInARN=createScalingInPolicy()['PolicyARN']
 print("Scale In Policy ARN: "+ScaleInARN)
 
+
+
+########## Linking Cloudwatch with Scale Out policy ##########
+def linkCloudwatchForScaleOut():
+    cw = boto3.client('cloudwatch')
+    resCloudwatch = cw.put_metric_alarm(
+        AlarmName='AlarmScaleOut',
+        ComparisonOperator='GreaterThanThreshold',
+        EvaluationPeriods=2,
+        MetricName='CPUUtilization',
+        Namespace='AWS/EC2',
+        Period=60,
+        Statistic='Average',
+        Threshold=75.0,
+        ActionsEnabled=True,
+        AlarmActions=[ScaleOutARN],
+        Dimensions=[
+            {
+                'Name': 'AutoScalingGroupName',
+                'Value': ASG_name
+            },
+        ],
+        Unit='Percent'
+    )
+    return resCloudwatch
+res = linkCloudwatchForScaleOut()
+print("Linking Scale Out policy with Cloudwatch!\n")
+
+
+
+########## Link Cloudwatch with Scale In Policy ##########
+def linkCloudwatchForScaleIn():
+    cw = boto3.client('cloudwatch')
+    resCloudwatch = cw.put_metric_alarm(
+        AlarmName='AlarmScaleIn',
+        ComparisonOperator='LessThanThreshold',
+        EvaluationPeriods=2,
+        MetricName='CPUUtilization',
+        Namespace='AWS/EC2',
+        Period=60,
+        Statistic='Average',
+        Threshold=20.0,
+        ActionsEnabled=True,
+        AlarmActions=[ScaleInARN],
+        Dimensions=[
+            {
+                'Name': 'AutoScalingGroupName',
+                'Value': ASG_name
+            },
+        ],
+        Unit='Percent'
+    )
+    return resCloudwatch
+res = linkCloudwatchForScaleIn()
+print("Linking Scale In policy with Cloudwatch!\n")
