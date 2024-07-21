@@ -11,7 +11,7 @@ def creates3storage():
         CreateBucketConfiguration={'LocationConstraint': 'ap-northeast-2',},
     )
     return response["Location"]
-#s3BucketUrl=creates3storage()
+s3BucketUrl=creates3storage()
 
 
 
@@ -19,14 +19,13 @@ def creates3storage():
 def putDataInS3():
     s3=boto3.client('s3')
     s3.upload_file('./index.html', bucketName, 'index.html')
-#putDataInS3()
+putDataInS3()
 
 
 
 ######### Launching EC2 instance #########
 ############ note:- wait for few minutes to run the script and restart nginx ###########
-
-amiId="ami-062cf18d655c0b1e8"
+# amiId="ami-062cf18d655c0b1e8"
 keyPair="Yash_HV"
 securityGroup="sg-04b6dc832e6caa00c"
 script='''#!/bin/bash
@@ -65,13 +64,13 @@ def lauchEC2Instance():
     time.sleep(5) 
     return response
 
-# EC2details = lauchEC2Instance()
-# instanceId = EC2details['Instances'][0]['InstanceId']
-# VpcId = EC2details['Instances'][0]['VpcId']
-# SubnetId = EC2details['Instances'][0]['SubnetId']
-# # print(EC2details)
-# print("Instance Id: "+instanceId)
-# print("VPC Id: "+VpcId)
+EC2details = lauchEC2Instance()
+instanceId = EC2details['Instances'][0]['InstanceId']
+VpcId = EC2details['Instances'][0]['VpcId']
+SubnetId = EC2details['Instances'][0]['SubnetId']
+# print(EC2details)
+print("Instance Id: "+instanceId)
+print("VPC Id: "+VpcId)
 
 
 
@@ -93,8 +92,8 @@ def createTargetGroup():
         TargetType='instance',
     )
     return response
-# tg_arn = createTargetGroup()['TargetGroups'][0]['TargetGroupArn']
-# print("Target ARN: "+tg_arn)
+tg_arn = createTargetGroup()['TargetGroups'][0]['TargetGroupArn']
+print("Target ARN: "+tg_arn)
 
 
 
@@ -128,13 +127,13 @@ def createLB():
     )
 
     return response
-# LB_arn = createLB()['LoadBalancers'][0]['LoadBalancerArn']
-# print("Load Balancer ARN: "+LB_arn)
+LB_arn = createLB()['LoadBalancers'][0]['LoadBalancerArn']
+print("Load Balancer ARN: "+LB_arn)
 
 
-tg_arn='arn:aws:elasticloadbalancing:ap-northeast-2:975050024946:targetgroup/Yash-tg/312c117469895dde'
-instanceId='i-03466e82e7e7051ea'
-LB_arn='arn:aws:elasticloadbalancing:ap-northeast-2:975050024946:loadbalancer/app/yash-LB/8ca993cbcf7f3bb8'
+# tg_arn='arn:aws:elasticloadbalancing:ap-northeast-2:975050024946:targetgroup/Yash-tg/312c117469895dde'
+# instanceId='i-03466e82e7e7051ea'
+# LB_arn='arn:aws:elasticloadbalancing:ap-northeast-2:975050024946:loadbalancer/app/yash-LB/8ca993cbcf7f3bb8'
 
 ########### Registering Target Group and Adding Listner ###########
 def registerTGandListner():
@@ -156,8 +155,8 @@ def registerTGandListner():
     )
     return response
 
-# listner =registerTGandListner()['Listeners'][0]['ListenerArn']
-# print("Adding Listner to Target Group: "+listner)
+listner =registerTGandListner()['Listeners'][0]['ListenerArn']
+print("Adding Listner to Target Group: "+listner)
 
 
 
@@ -191,7 +190,7 @@ def createLaunchConfigASG():
         LaunchConfigurationName=ASG_template,
     )
     print("Launch Configuration:\n"+str(response))
-# createLaunchConfigASG()
+createLaunchConfigASG()
 
 
 
@@ -208,7 +207,7 @@ def createAsg():
         VPCZoneIdentifier=','.join(i for i in subnets),
     )
     print("Creating ASG:\n"+str(response))
-# createAsg()
+createAsg()
 
 
 
@@ -224,8 +223,8 @@ def createScalingOutPolicy():
         Cooldown=300
     )
     return resScaleOut
-# ScaleOutARN=createScalingOutPolicy()['PolicyARN']
-# print("Scale Out Policy ARN: "+ScaleOutARN)
+ScaleOutARN=createScalingOutPolicy()['PolicyARN']
+print("Scale Out Policy ARN: "+ScaleOutARN)
 
 
 
@@ -241,8 +240,8 @@ def createScalingInPolicy():
         Cooldown=300  
     )
     return resScaleIn
-# ScaleInARN=createScalingInPolicy()['PolicyARN']
-# print("Scale In Policy ARN: "+ScaleInARN)
+ScaleInARN=createScalingInPolicy()['PolicyARN']
+print("Scale In Policy ARN: "+ScaleInARN)
 
 
 
@@ -269,8 +268,8 @@ def linkCloudwatchForScaleOut():
         Unit='Percent'
     )
     return resCloudwatch
-# res = linkCloudwatchForScaleOut()
-# print("Linking Scale Out policy with Cloudwatch!\n")
+res = linkCloudwatchForScaleOut()
+print("Linking Scale Out policy with Cloudwatch!\n")
 
 
 
@@ -297,8 +296,8 @@ def linkCloudwatchForScaleIn():
         Unit='Percent'
     )
     return resCloudwatch
-# res = linkCloudwatchForScaleIn()
-# print("Linking Scale In policy with Cloudwatch!\n")
+res = linkCloudwatchForScaleIn()
+print("Linking Scale In policy with Cloudwatch!\n")
 
 
 
@@ -314,25 +313,25 @@ def snsHealthTopic():
     )
     snsHealthArn = response['TopicArn']
 
-    # res=cw.put_metric_alarm(
-    #     AlarmName='HealthAlarm',
-    #     ComparisonOperator='LessThanThreshold',
-    #     EvaluationPeriods=2,
-    #     MetricName='HealthyHostCount',
-    #     Namespace='AWS/ApplicationELB',
-    #     Period=60,
-    #     Statistic='Average',
-    #     Threshold=1,
-    #     ActionsEnabled=True,
-    #     AlarmActions=[snsHealthArn],
-    #     AlarmDescription='Alarm when healthy hosts count is less than 1',
-    #     Dimensions=[
-    #         {
-    #             'Name': 'AutoScalingGroupName',
-    #             'Value': ASG_name
-    #         },
-    #     ]
-    # )
+    res=cw.put_metric_alarm(
+        AlarmName='HealthAlarm',
+        ComparisonOperator='LessThanThreshold',
+        EvaluationPeriods=2,
+        MetricName='HealthyHostCount',
+        Namespace='AWS/ApplicationELB',
+        Period=60,
+        Statistic='Average',
+        Threshold=1,
+        ActionsEnabled=True,
+        AlarmActions=[snsHealthArn],
+        AlarmDescription='Alarm when healthy hosts count is less than 1',
+        Dimensions=[
+            {
+                'Name': 'AutoScalingGroupName',
+                'Value': ASG_name
+            },
+        ]
+    )
 
     response = sns.subscribe(
         TopicArn=snsHealthArn,
@@ -383,8 +382,8 @@ def snsScalingTopic():
         Endpoint='yashbhatt1304@gmail.com'
     )
     return snsScalingArn
-# snsScalingArn=snsScalingTopic()
-# print("SNS Scaling Topic ARN: "+snsScalingArn)
+snsScalingArn=snsScalingTopic()
+print("SNS Scaling Topic ARN: "+snsScalingArn)
 
 
 
@@ -426,5 +425,5 @@ def snsTrafficTopic():
         Endpoint='yashbhatt1304@gmail.com'
     )
     return snsTrafficArn
-# snsTrafficArn=snsTrafficTopic()
-# print("SNS Scaling Topic ARN: "+snsTrafficArn)
+snsTrafficArn=snsTrafficTopic()
+print("SNS Scaling Topic ARN: "+snsTrafficArn)
