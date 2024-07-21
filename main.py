@@ -1,4 +1,5 @@
 import boto3
+import time
 
 bucketName="yashbucket101"
 
@@ -10,7 +11,7 @@ def creates3storage():
         CreateBucketConfiguration={'LocationConstraint': 'ap-northeast-2',},
     )
     return response["Location"]
-s3BucketUrl=creates3storage()
+#s3BucketUrl=creates3storage()
 
 
 
@@ -18,7 +19,7 @@ s3BucketUrl=creates3storage()
 def putDataInS3():
     s3=boto3.client('s3')
     s3.upload_file('./index.html', bucketName, 'index.html')
-putDataInS3()
+#putDataInS3()
 
 
 
@@ -60,16 +61,17 @@ def lauchEC2Instance():
             securityGroup,
         ],
         UserData=script
-    )   
+    )  
+    time.sleep(5) 
     return response
 
-EC2details = lauchEC2Instance()
-instanceId = EC2details['Instances'][0]['InstanceId']
-VpcId = EC2details['Instances'][0]['VpcId']
-SubnetId = EC2details['Instances'][0]['SubnetId']
-# print(EC2details)
-print("Instance Id: "+instanceId)
-print("VPC Id: "+VpcId)
+# EC2details = lauchEC2Instance()
+# instanceId = EC2details['Instances'][0]['InstanceId']
+# VpcId = EC2details['Instances'][0]['VpcId']
+# SubnetId = EC2details['Instances'][0]['SubnetId']
+# # print(EC2details)
+# print("Instance Id: "+instanceId)
+# print("VPC Id: "+VpcId)
 
 
 
@@ -91,8 +93,8 @@ def createTargetGroup():
         TargetType='instance',
     )
     return response
-tg_arn = createTargetGroup()['TargetGroups'][0]['TargetGroupArn']
-print("Target ARN: "+tg_arn)
+# tg_arn = createTargetGroup()['TargetGroups'][0]['TargetGroupArn']
+# print("Target ARN: "+tg_arn)
 
 
 
@@ -104,6 +106,7 @@ def getSubnet():
             {
                 'Name': 'vpc-id',
                 'Values': ['vpc-0f22c13329dc40837']
+                # 'Values': [VpcId]
             }
         ]
     )
@@ -125,10 +128,13 @@ def createLB():
     )
 
     return response
-LB_arn = createLB()['LoadBalancers'][0]['LoadBalancerArn']
-print("Load Balancer ARN: "+LB_arn)
+# LB_arn = createLB()['LoadBalancers'][0]['LoadBalancerArn']
+# print("Load Balancer ARN: "+LB_arn)
 
 
+tg_arn='arn:aws:elasticloadbalancing:ap-northeast-2:975050024946:targetgroup/Yash-tg/312c117469895dde'
+instanceId='i-03466e82e7e7051ea'
+LB_arn='arn:aws:elasticloadbalancing:ap-northeast-2:975050024946:loadbalancer/app/yash-LB/8ca993cbcf7f3bb8'
 
 ########### Registering Target Group and Adding Listner ###########
 def registerTGandListner():
@@ -150,12 +156,12 @@ def registerTGandListner():
     )
     return response
 
-listner =registerTGandListner()['Listeners'][0]['ListenerArn']
-print("Adding Listner to Target Group: "+listner)
+# listner =registerTGandListner()['Listeners'][0]['ListenerArn']
+# print("Adding Listner to Target Group: "+listner)
 
 
 
-########## Geti=ting details of EC2 running Instance ##########
+########## Getting details of EC2 running Instance ##########
 def getAMI():
     ec2=boto3.client('ec2')
     response = ec2.describe_instances(
@@ -174,6 +180,7 @@ print("VPC Identifier: "+vpcIdentifier)
 
 
 ########### Creating configuration template for ASG ###########
+ASG_template = 'yash-launch-config'
 def createLaunchConfigASG():
     asg = boto3.client('autoscaling')
     response = asg.create_launch_configuration(
@@ -181,7 +188,7 @@ def createLaunchConfigASG():
         KeyName='Yash_HV',
         SecurityGroups=['sg-04b6dc832e6caa00c',],
         InstanceType='t2.micro',
-        LaunchConfigurationName='yash-launch-config',
+        LaunchConfigurationName=ASG_template,
     )
     print("Launch Configuration:\n"+str(response))
 # createLaunchConfigASG()
@@ -189,10 +196,11 @@ def createLaunchConfigASG():
 
 
 ########### Creating ASG ###########
+ASG_name = 'yash-auto-scaling-group'
 def createAsg():
     asg = boto3.client('autoscaling')
     response = asg.create_auto_scaling_group(
-        AutoScalingGroupName='yash-auto-scaling-group',
+        AutoScalingGroupName=ASG_name,
         DefaultInstanceWarmup=120,
         LaunchConfigurationName='yash-launch-config',
         MaxSize=4,
@@ -200,5 +208,39 @@ def createAsg():
         VPCZoneIdentifier=','.join(i for i in subnets),
     )
     print("Creating ASG:\n"+str(response))
+# createAsg()
 
-createAsg()
+
+
+######## Scale Out Policy #########
+def createScalingOutPolicy():
+    asg = boto3.client('autoscaling')
+    resScaleOut = asg.put_scaling_policy(
+        AutoScalingGroupName=ASG_name,
+        PolicyName='ScaleOutPolicy',
+        PolicyType='SimpleScaling',
+        AdjustmentType='ChangeInCapacity',
+        ScalingAdjustment=1,  # Increase the number of instances by 1
+        Cooldown=300
+    )
+    return resScaleOut
+ScaleOutARN=createScalingOutPolicy()['PolicyARN']
+print("Scale Out Policy ARN: "+ScaleOutARN)
+
+
+
+######## Scale In Policy #########
+def createScalingInPolicy():
+    asg = boto3.client('autoscaling')
+    resScaleIn = asg.put_scaling_policy(
+        AutoScalingGroupName=ASG_name,
+        PolicyName='ScaleInPolicy',
+        PolicyType='SimpleScaling',
+        AdjustmentType='ChangeInCapacity',
+        ScalingAdjustment=-1,  # Decrease the number of instances by 1
+        Cooldown=300  
+    )
+    return resScaleIn
+ScaleInARN=createScalingInPolicy()['PolicyARN']
+print("Scale In Policy ARN: "+ScaleInARN)
+
