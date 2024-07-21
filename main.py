@@ -208,7 +208,7 @@ def createAsg():
         VPCZoneIdentifier=','.join(i for i in subnets),
     )
     print("Creating ASG:\n"+str(response))
-createAsg()
+# createAsg()
 
 
 
@@ -224,8 +224,8 @@ def createScalingOutPolicy():
         Cooldown=300
     )
     return resScaleOut
-ScaleOutARN=createScalingOutPolicy()['PolicyARN']
-print("Scale Out Policy ARN: "+ScaleOutARN)
+# ScaleOutARN=createScalingOutPolicy()['PolicyARN']
+# print("Scale Out Policy ARN: "+ScaleOutARN)
 
 
 
@@ -241,8 +241,8 @@ def createScalingInPolicy():
         Cooldown=300  
     )
     return resScaleIn
-ScaleInARN=createScalingInPolicy()['PolicyARN']
-print("Scale In Policy ARN: "+ScaleInARN)
+# ScaleInARN=createScalingInPolicy()['PolicyARN']
+# print("Scale In Policy ARN: "+ScaleInARN)
 
 
 
@@ -269,8 +269,8 @@ def linkCloudwatchForScaleOut():
         Unit='Percent'
     )
     return resCloudwatch
-res = linkCloudwatchForScaleOut()
-print("Linking Scale Out policy with Cloudwatch!\n")
+# res = linkCloudwatchForScaleOut()
+# print("Linking Scale Out policy with Cloudwatch!\n")
 
 
 
@@ -297,5 +297,44 @@ def linkCloudwatchForScaleIn():
         Unit='Percent'
     )
     return resCloudwatch
-res = linkCloudwatchForScaleIn()
-print("Linking Scale In policy with Cloudwatch!\n")
+# res = linkCloudwatchForScaleIn()
+# print("Linking Scale In policy with Cloudwatch!\n")
+
+
+
+########## Configuring health alerts ###########
+def snsHealthTopic():
+    sns = boto3.client('sns')
+    cw = boto3.client('cloudwatch')
+    response = sns.create_topic(
+        Name='HealthIssuesTopic',
+        Attributes={
+            'DisplayName': 'HealthIssuesTopic'
+        }
+    )
+    snsHealthArn = response['TopicArn']
+
+    res=cw.put_metric_alarm(
+        AlarmName='HealthAlarm',
+        ComparisonOperator='LessThanThreshold',
+        EvaluationPeriods=2,
+        MetricName='HealthyHostCount',
+        Namespace='AWS/ApplicationELB',
+        Period=60,
+        Statistic='Average',
+        Threshold=1,
+        ActionsEnabled=True,
+        AlarmActions=[snsHealthArn],
+        AlarmDescription='Alarm when healthy hosts count is less than 1',
+        Dimensions=[
+            {
+                'Name': 'AutoScalingGroupName',
+                'Value': ASG_name
+            },
+        ]
+    )
+    return snsHealthArn
+snsHealthArn=snsHealthTopic()
+print("SNS Health Topic ARN: "+snsHealthArn)
+
+
