@@ -11,7 +11,9 @@ def creates3storage():
         CreateBucketConfiguration={'LocationConstraint': 'ap-northeast-2',},
     )
     return response["Location"]
+    print("Creating S3 Bucket!!!!!!!S")
 s3BucketUrl=creates3storage()
+print("S3 Bucket URL: "+s3BucketUrl +"\n")
 
 
 
@@ -19,6 +21,7 @@ s3BucketUrl=creates3storage()
 def putDataInS3():
     s3=boto3.client('s3')
     s3.upload_file('./index.html', bucketName, 'index.html')
+    print("Adding data in S3 bucket!!!!!!")
 putDataInS3()
 
 
@@ -62,6 +65,7 @@ def lauchEC2Instance():
         UserData=script
     )  
     time.sleep(5) 
+    print("Launching EC2 Instance")
     return response
 
 EC2details = lauchEC2Instance()
